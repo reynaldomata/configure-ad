@@ -1,66 +1,11 @@
 <p align="center">
-<img src="https://i.imgur.com/pU5A58S.png" alt="Microsoft Active Directory Logo"/>
+<img src="https://i.imgur.com/R5OzmdT.png" height="55%" width="55%" alt="Microsoft Active Directory Logo"/>
 </p>
 
-<h1>Installing Active Directory in Azure</h1>
-This lab demonstrates the steps I took to install Active Directory using Azure. I will be using this as the foundation for labs I will do in the future. I will be using two VMs on Azure that are on the same vnet. This particular lab will focus on just one of the VMs, which will be used to install Active Directory and configured to be the domain controller. The other VM will be used as a client that will join later in a future lab. <br />
+<h1>Microsoft Azure - Active Directory (AD)</h1>
 
-<h2>Environments and Technologies Used</h2>
+This demonstration outlines the implementation of on-premises Active Directory within Azure Virtual Machines.
 
-- Microsoft Azure (Virtual Machines/Compute)
-- Remote Desktop
-- Active Directory Domain Services
-
-<h2>Operating Systems Used </h2>
-
-- Windows Server 2022
-- Windows 10 Pro (21H2)
-
-<h2>Installation Steps</h2>
-
-<p>
-<img src="https://i.imgur.com/fBRzEZ3.png" height="80%" width="80%" alt="Installation Steps"/>
-</p>
-<p>
-Before using the VMs, it is important to set the domain controller VM's IP address as static. By default, the VMs will not be able to communicate with each other if both have dynamic IPs despite being on the same vnet. If we do not make the necessary change, the client will not be able to join the domain that will be created later. On the Azure portal, click on the Networking tab on the domain controller VM. Click on the Network Interface and open the IP configurations tab. Toggle the Assignment switch to be Static and save your changes. We are making sure the domain controller has a static IP and it will be used as a reference when we make configurations.
-</p>
-<br />
-
-<p>
-<img src="https://i.imgur.com/hE1XNtg.png" height="80%" width="80%" alt="Installation Steps"/>
-<img src="https://i.imgur.com/hlDtnbY.png" height="80%" width="80%" alt="Installation Steps"/>
-<img src="https://i.imgur.com/IbIJWiC.png" height="80%" width="80%" alt="Installation Steps"/>
-</p>
-<p>
-After setting the static IP, it is time to log in to the client VM and see if there is connectivity to the domain controller. Using ping -t (domain controller private ip address), will show that the connection is being timed out. On the domain controller VM, we need to enable ICMPv4 on the local Windows Firewall. Within the search bar, type wf.msc to open Windows Defender Firewall. Click on Inbound Rules and enable the Core Networking Diagnostics - ICMP Echo Request rules. Returning to the client VM will show that the ping is now resolving without errors.
-</p>
-<br />
-
-<p>
-<img src="https://i.imgur.com/ktSoNmA.png" height="80%" width="80%" alt="Installation Steps"/>
-</p>
-<p>
-It is now time to install Active Directory on the domain controller VM. With Server Manager open, click on Add Roles and Features and click Next. Confirm the private IP address of the domain controller VM. In the Server Roles tab, click on Active Directory Domain Services. Click Add Features, click Next, then Install. Next we have to promote the server into a domain controller. In Server Manager, there is a warning sign in the top right corner under a flag. Click on that flag and click Promote this server to a domain controller. Click on Add a new forest and specify a domain name. In my case, I will use ernestotest.com. Specify a password for the domain and click on Next on each screen and Install.
-</p>
-<br />
-
-<h2>An Important Note </h2>
-
-When logging back in to the domain controller VM through Remote Desktop Connection, it is important to log in with the context of the domain. Type out the domain path and then the name of the user. For example: mydomain.com\labuser. In my case, it is ernestotest.com\labuser. Now that Active Directory is installed, configurations can be implemented in future labs and the client VM will be able to join the domain that was created.
-
-
-
-
-
-
-
-
-<p align="center">
-<img src="https://i.imgur.com/pU5A58S.png" alt="Microsoft Active Directory Logo"/>
-</p>
-
-<h1>Active Directory Configurations in Azure</h1>
-This lab is a follow up to the lab where I installed Active Directory and created a domain controller. I will now be configuring Active Directory and allowing a client to join the domain as well as creating user accounts. <br />
 
 <h2>Environments and Technologies Used</h2>
 
@@ -72,62 +17,436 @@ This lab is a follow up to the lab where I installed Active Directory and create
 <h2>Operating Systems Used </h2>
 
 - Windows Server 2022
-- Windows 10 Pro (21H2)
+- Windows 10 (21H2)
 
-<h2>Configuration Steps</h2>
+<h2>High-Level Deployment and Configuration Steps</h2>
 
-<p>
-<img src="https://i.imgur.com/EFjZrUG.png" height="80%" width="80%" alt="Configuration Steps"/>
-<img src="https://i.imgur.com/HSJk3BO.png" height="80%" width="80%" alt="Configuration Steps"/>
-</p>
-<p>
-Now that Active Directory is installed on the domain controller VM, it is time to create new Organizational Units and Users. With the Active Directory Users and Computers console open, right click on the domain you created (in my case, ernestotest.com) and make a new Organizational Unit (OU). I have created two Organizational Units, _EMPLOYEES and _ADMINS. The reason behind this naming scheme is because a Powershell script will be utilized later. Within the _ADMINS OU, I created a new User called Jane Doe. Jane's account will be given administrative privileges through the use of a Security Group. To grant admin privileges to a User, right click on the user and open their Properties. Click Member Of then Add to apply the appropraite security group. In this case, I added Jane to the Domain Admins security group. From now on, I will be using Jane's account to make any further changes. I will be logging off as labuser and log in as jane_admin.
-</p>
-<br />
+- Setup 2 Virtual Machines within Azure:
+  - Domain Controller VM (Windows Server 2022) -- set Private IP Address to STATIC
+  - Client VM (Windows 10) -- same Resource Group and Vnet as DC + set DNS Server to use DC's Private IP address.
+- Login to both VMs using Remote Desktop (RDP).
+- Enable Inbound Rules for "Core Networking Diagnostics" within Domain Controller's Firewall to ensure connectivity between the Client and Domain Controller.
+- Install Active Directory Domain Services within Domain Controller VM
+- Create an Admin and Standard User Account in AD
+- Link Cilent VM to a domain, then login using original admin account
+- Setup Remote Desktop for non-administrative users on Client VM
+- Create additional users and attempt to log into Client VM as one of those newly created users
 
-<p>
-<img src="https://i.imgur.com/X6UGnsf.png" height="80%" width="80%" alt="Configuration Steps"/>
-</p>
-<p>
-Before the client can join the domain, it is important to configure the DNS settings first. The DNS server has to pointing to the domain controller's private IP address. On the Azure portal, open the Networking tab and click on Network Interface. In the DNS servers, enter the domain controller's private IP address and save the changes. Restart the client VM in order to ensure the DNS changes are saved. 
-</p>
-<br />
+<h2>Step Process</h2>
 
-<p>
-<img src="https://i.imgur.com/b1gUew4.png" height="80%" width="80%" alt="Configuration Steps"/>
-<img src="https://i.imgur.com/N0Mnfoq.png" height="80%" width="80%" alt="Configuration Steps"/>
-<img src="https://i.imgur.com/DkPUJNR.png" height="80%" width="80%" alt="Configuration Steps"/>
-</p>
-<p>
-It is now time to make the client VM join the domain. In the System menu of the client VM, click on Rename this PC (advanced) and Change. Enter the domain and necessary credentials in order to let the client join the domain. I am logging in as Jane Doe for the purposes of the lab. It is important to note that the login credentials have to be input within the context of the domain path. The client should now be part of the domain. On the domain controller, the client should now appear in Computers in the Active Directory Users and Computers panel.
-</p>
-<br />
+<h3>&#9312; Create a Domain Controller VM</h3>
 
-<p>
-<img src="https://i.imgur.com/jmR2LXa.png" height="80%" width="80%" alt="Configuration Steps"/>
+- In the Search Box at the top header, type and select "Virtual machines".
+  - If "Virtual machines" is already listed on the front page, then you can simply click on it, rather than manually searching.
+- Click "Create", then select "Azure virtual machine".
+<p align="center">
+<img src="https://i.imgur.com/tiC5aA4.jpg" height="80%" width="80%" alt="Step 1-1"/>
 </p>
-<p>
-Before users in the domain can use the client computer, Remote Desktop has to be enabled for non-administrative users. While logged in as the administrator (in my case, Jane), open System Properties. Click on Remote Desktop and Select users that can remotely access this PC. Allow Domain Users access to Remote Desktop. Non-administrative users can now log in to Client-1. Normally a Group Policy can do the same and allows changes to many systems at once. For the purposes of this lab, a Group Policy won't be used to make this change.
-</p>
-<br />
 
-<p>
-<img src="https://i.imgur.com/HrI6BTq.png" height="80%" width="80%" alt="Configuration Steps"/>
-<img src="https://i.imgur.com/c7LaN48.png" height="80%" width="80%" alt="Configuration Steps"/>
+- Name your Virtual Machine anyway you want (this example uses **DC-01**).
+  - Resource Group is automatically given a name when naming the Virtual Machine, but you can change it if you wish (this example uses **DC-01_group**).
+- Change the Region that best suites your location (this example uses **(US) West US 3**).
+- Change the Image to a Windows Server, as this will become our Domain Controller VM (this example uses **Windows Server 2022 Datacenter: Azure Edition**).
+- Make sure the Size is adequate enough to run this server (this example uses **Standard_E2s_v3 - 2 vcpus, 16 GiB memory**).
+- Create a username and password of your choice (this example uses **dcuser**).
+- Skip everything else and click "Review + create".
+  - IF there is a Licensing Checkbox at the end, make sure that is CHECKED!
+- If Validation passed, click "Create".
+<p align="center">
+<img src="https://i.imgur.com/RVHx4nb.png" height="70%" width="70%" alt="Step 1-2"/>
 </p>
-<p>
-Creating users can be done manually or through the use of a script. For this lab, I will be using a PowerShell script. The PowerShell script can be found <a href="https://github.com/AsiaPonder001/BunchofUsers/blob/main/README.md?plain=1)"> here. </a> On the domain controller, open PowerShell ISE as an administrator (and make sure you are logged in with an admin account on the domain controller). Create a new file and paste the script into ISE console. Run the script and observe the accounts being created. 
-</p>
-<br />
+<hr>
 
-<p>
-<img src="https://i.imgur.com/Xn5tQU2.png" height="80%" width="80%" alt="Configuration Steps"/>
-</p>
-<p>
-After creating the users, Client-1 can now be signed in as one of the new users that were created from the PowerShell script. Pick a name and simply sign in to the client with the context of the domain. In my case, it is ernestotest.com\bon.rovej.
-</p>
-<br />
+<h3>&#9313; Create a Client VM</h3>
 
-<h2>Lessons Learned</h2>
+- Follow the same steps as before for creating a virtual machine.
+  - However, the Resource Group should be assigned as the same for the Domain Controller VM (this example uses **DC-01_group**).
+  - Use a different virtual machine name (this example uses **Client-01**).
+  - Change the Administrator Account credentials to differentiate the two VMs (this example uses **clientuser**).
+- Change the Image to a Windows OS (this example uses **Windows 10 Pro, version 22H2 - x64 Gen2**).
+- Once done, click "Next" until you reach "Networking" (OR you can simply click the Networking tab at the top).
+<p align="center">
+<img src="https://i.imgur.com/SDbD5nV.jpg" height="70%" width="70%" alt="Step 1-3"/>
+</p>
 
-Doing this lab has made me learn how to set up Active Directory and join clients to the domain. I also created users and assigned the necessary permissions. Active Directory is not difficult to learn despite all the menu navigation that takes place. This lab is a segway for me to learn about DNS settings in-depth and file permissions in action. I will go into detail about these topics in other labs.
+- Make sure that the "Virtual network" is set to the Vnet that the Domain Controller VM automatically created (this example uses **DC-01-vnet**).
+- Select the dropdown box for Subnet and confirm the default selection (this example uses **default (10.0.0.0/24)**).
+  - Sometimes you will have to manually set the Subnet, otherwise it will not let you proceed.
+- Skip everything else and click "Review + create".
+- If Validation passed, click "Create".
+<p align="center">
+<img src="https://i.imgur.com/SiHJ4N0.jpg" height="70%" width="70%" alt="Step 1-4"/>
+</p>
+<hr>
+
+<h3>&#9314; Assign Domain Controller's Private IP address to STATIC</h3>
+
+_Later in this demonstration, we'll need users to login using a domain name instead of their standard username, so we'll have to make sure the Domain Controller's NIC Private IP address doesn't get changed in the future:_
+- From Azure Portal, go to DC-01 VM Overview page.
+- Click on "Networking", then click on the "Network Interface" (this example uses **dc-01667**).
+<p align="center">
+<img src="https://i.imgur.com/OV6YK9L.jpg" height="70%" width="70%" alt="Step 2-1"/>
+</p>
+
+- Click on "IP configurations" on the left.
+- You can see that the Private IP address is Dynamic.
+  - Click on "ipconfig1".
+<p align="center">
+<img src="https://i.imgur.com/AzqdoWb.jpg" height="70%" width="70%" alt="Step 2-2"/>
+</p>
+
+- Change the Assignment at the bottom to "Static".
+- Click "Save".
+<p align="center">
+<img src="https://i.imgur.com/S6HX1sJ.jpg" height="70%" width="70%" alt="Step 2-3"/>
+</p>
+<hr>
+
+<h3>&#9315; Ensure Connectivity between the Client and Domain Controller</h3>
+
+- Login to both the Domain Controller and Client-01 VMs with Remote Desktop:
+  - In Azure Portal, go to any VM Overview page (this example starts with **Client-01 VM**).
+  - COPY its public IP address (located on the right side).
+<p align="center">
+<img src="https://i.imgur.com/l1jop0r.jpg" height="90%" width="90%" alt="Step 3-1"/>
+</p>
+
+- Press the Windows Key/Button, type and select "Remote Desktop Connection".
+- Input the virtual machine's Public IP Address and click Connect.
+- Enter the username and password, then click OK.
+<p align="center">
+<img src="https://i.imgur.com/hcBKjWu.jpg" height="90%" width="90%" alt="Step 3-2"/>
+</p>
+
+- A prompt will appear about the identity cannot be verified; just press "YES".
+<p align="center">
+<img src="https://i.imgur.com/3YxlS2G.jpg" height="70%" width="70%" alt="Step 3-3"/>
+</p>
+
+- Minimize the Virtual Machine window and login to the other VM (the Domain Controller).
+<p align="center">
+<img src="https://i.imgur.com/PpLmQO7.jpg" height="90%" width="90%" alt="Step 3-4"/>
+<img src="https://i.imgur.com/2KVQ6D1.png" height="64%" width="64%" alt="Step 3-5"/>
+</p>
+
+- On the Domain Controller VM, press the Windows Key/Button, then type and select "Windows Defender Firewall with Advanced Security".
+<p align="center">
+<img src="https://i.imgur.com/WulKDTC.png" height="64%" width="64%" alt="Step 3-6"/>
+</p>
+
+- Click "Inbound Rules" (on the left sidebar).
+- Find the two names "Core Networking Diagnostics - ICMP Echo Request (ICMPv4-In)" (easier to sort by Protocol).
+- Select them both, then click "Enable Rule" on the right sidebar (or right-click, select).
+  - _Make sure that you enable ICMPv4, and NOT ICMPv6!_
+<p align="center">
+<img src="https://i.imgur.com/M1HM7m4.jpg" height="100%" width="100%" alt="Step 3-7"/>
+</p>
+
+- Once enabled, return to the DC-01 VM Overview page in Azure.
+- COPY the Private IP Address.
+<p align="center">
+<img src="https://i.imgur.com/mAvwb9i.jpg" height="100%" width="100%" alt="Step 3-8"/>
+</p>
+
+- With that copied, go into the Client-01 VM.
+- Press the Windows key (or Start Button), the type and select CMD or "Command Prompt" (you can run as Admin if desired).
+<p align="center">
+<img src="https://i.imgur.com/ca7M8oS.jpg" height="70%" width="70%" alt="Step 3-9"/>
+</p>
+
+- Inside the Command Prompt, type "ping -t {DC-01 Private IP Address}" (this example uses IP address **10.0.0.4**)
+  - _This will infinitely sent data packets for response to the DC-01 VM._
+- This confirms if the Client VM can see the Domain Controller VM successfully, otherwise you'll recieve a "Request Timed Out" message.
+  - _You can either press "Ctrl+C" to stop the ping process, OR you can simply close the Command Prompt._
+<p align="center">
+<img src="https://i.imgur.com/KKT14mt.jpg" height="70%" width="70%" alt="Step 3-10"/>
+</p>
+<hr>
+
+<h3>&#9316; Install Active Directory Domain Services within Domain Controller VM</h3>
+
+- Login to DC-01 VM and open "Server Manager" (if not open already).
+- Click on "Add Roles and Features" (Number 2) on the front page.
+<p align="center">
+<img src="https://i.imgur.com/LKpjSjC.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Keep clicking "Next" until you reach Server Roles tab.
+- Checkmark "Active Directory Domain Services", and prompt will appear:
+- Click "Add Features".
+- Keep clicking "Next" until the Confirmation tab.
+- Click "Install" then close once completed.
+<p align="center">
+<img src="https://i.imgur.com/nRniK70.jpg" height="100%" width="100%" alt="Azure Step 5-5"/>
+</p>
+
+- Back on the Server Manager, click on the flag icon with a caution symbol on it (located at top-right header).
+- Click "Promote this server to a domain controller"
+<p align="center">
+<img src="https://i.imgur.com/5SEF3r7.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- In the Deployment Configuration tab, select "Add a new forest".
+- Type any domain name you wish to use (this example uses **mydomain.com**)
+- Click "Next".
+<p align="center">
+<img src="https://i.imgur.com/KqLJ1zR.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Create a password of your choice.
+- Keep clicking "Next" until the "Install" option is enabled, then click "Install".
+  - _Installing will result in restarting the Domain Controller VM._
+<p align="center">
+<img src="https://i.imgur.com/sOfwFw2.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+<img src="https://i.imgur.com/GGJhNCF.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+<img src="https://i.imgur.com/8eabtaB.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Once completed, log back into the DC-01 VM.
+  - _However, you should not be able use the same username as before, now that it requires the domain name._
+- Select "More Choices", then click "Use a different account".
+- Change the username to add the domain name at the beginning of the original username (this example used mydomain.com, thus the username becomes **mydomain.com\dcuser**)
+  - _NOTE: Don't forget what password to use when logging into the DC-01 VM!_
+<p align="center">
+<img src="https://i.imgur.com/ruqHto2.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+<hr>
+
+<h3>&#9317; Create an Admin Account in Active Directory</h3>
+
+- On the Domain Controller VM, in Server Manager, click on "Tools" on the top-right header.
+- Click "Active Directory Users and Computers".
+  - _This can also be searched from the Windows Key/Button._
+<p align="center">
+<img src="https://i.imgur.com/qvdckjx.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+_For this demonstration, we will create 2 new folders within mydomain.com (also known as "Organizational Unit")_
+- Right-click "mydomain.com" on the left sidebar.
+- Hover "New", then click "Organizational Unit".
+<p align="center">
+<img src="https://i.imgur.com/4Jm0gW5.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Name one `_EMPLOYEES` and the other `_ADMINS`.
+<p align="center">
+<img src="https://i.imgur.com/YNpRK8u.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+_Next, we'll add a new Admin user account inside the `_ADMINS` folder._
+  - Right-click on `_ADMINS`(or any empty space within the folder).
+  - Hover "New", then click "User".
+<p align="center">
+<img src="https://i.imgur.com/x9FzS23.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Create a first and last name, as well as a logon name for this Admin user, then click "Next" (this example uses **Jane Doe** / **jane_admin**)
+- Create a password of your choice for that account.
+- Uncheck "User must change password at next logon".
+- Checkmark "Password never expires".
+- Click "Next" until the account is created.
+<p align="center">
+<img src="https://i.imgur.com/vTN4ckZ.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+_The user account is only inside a folder named `_ADMINS`, but doesn't mean it has the privileges as one, so:_
+- Right-click on the new account, then click "Properties".
+<p align="center">
+<img src="https://i.imgur.com/6dV5m0S.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Click on the "Member Of" tab, the click the "Add" button.
+- Type in the word "domain", then click "Check Names", allowing to view all already built-in groups.
+- Select "Domain Admins", then "OK".
+- Click "Apply", then "OK" again.
+<p align="center">
+<img src="https://i.imgur.com/ZzPNPHn.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Once completed, logoff of Domain Controller VM and logon to the newly created admin account with the domain name (this example uses **mydomain.com\jane_admin**).
+  - _We use jane_admin account from now on instead of dcuser._
+<p align="center">
+<img src="https://i.imgur.com/g9bZXb4.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+<hr>
+
+<h3>&#9318; Join Client-01 to the domain (mydomain.com)</h3>
+
+- From Azure Portal, go to Client-01 VM Overview page.
+- Click on "Networking", then click on the "Network Interface" (this example uses **client-01857**).
+<p align="center">
+<img src="https://i.imgur.com/eHiv28J.jpg" height="70%" width="70%" alt="Step 2-1"/>
+</p>
+
+- Go to "DNS servers" on the left sidebar.
+- Select "Custom" option under DNS servers.
+- Input the DC's Private IP Address (this example uses **10.0.0.4**).
+- Click "Save".
+- Restart Client-01 VM.
+  - _You can also press the Restart button in the Client-01 VM Overview page_.
+  - _Logon again to Client-01 VM_.
+<p align="center">
+<img src="https://i.imgur.com/LaLsiSk.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+<img src="https://i.imgur.com/Sg9pvYY.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- On Client-01 VM, Right-click the Windows Button and select "System".
+<p align="center">
+<img src="https://i.imgur.com/JBMFeOM.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Click on "Rename this PC (advanced)"
+<p align="center">
+<img src="https://i.imgur.com/BnEqRHf.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Within the System Properties window, click "Change".
+  - _This will allow us to use the domain name connected to the Domain Controller._
+- Under Member Of, select "Domain" option, then type your domain name (this example uses **mydomain.com**).
+- Then click "OK".
+  - _A login prompt will appear._
+<p align="center">
+<img src="https://i.imgur.com/ERxuEiv.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Enter the Admin user's logon credentials (this example uses **mydomain.com\jane_admin**).
+- Click "OK".
+- If done correctly, you should see a welcoming window appear to joining the domain.
+- Click "OK" again and prompts you to require a restart.
+<p align="center">
+<img src="https://i.imgur.com/RRCV4F5.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+<img src="https://i.imgur.com/WjWrOQL.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+<img src="https://i.imgur.com/ylYxFqS.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Use Remote Desktop (RDP) to logon to the Client-01 VM.
+- Click "Use a different account", for now we will logon using the jane_admin account.
+  - _The admin account is already logged onto the DC-01 VM, but this time we are logging in through the Client-01 VM._
+<p align="center">
+<img src="https://i.imgur.com/zM9oOdR.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+<hr>
+
+<h3>&#9319; Setup Remote Desktop for non-administrative users on Client-01</h3>
+
+- Right-click the Windows Button and select "System", then click "Remote Desktop".
+<p align="center">
+<img src="https://i.imgur.com/6ddD3c5.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- At the bottom, click "Select users that can remotely access this PC".
+<p align="center">
+<img src="https://i.imgur.com/C6Bb4qG.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Next, click "Add...".
+- Type in "Domain_Users" into the Object names box.
+  - _You can also click Check Names like in Step 6._
+- Once assigned, click "OK" and "OK" again.
+  - _This now makes Client-01 as a normal, non-administrative user._
+<p align="center">
+<img src="https://i.imgur.com/PP0Xr1p.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+<hr>
+
+<h3>&#9320; Create additional users and attempt to log into Client-01 with one of them</h3>
+
+- Login to DC-01 as your admin account, if not already (this example uses **jane_admin**).
+- Press the Windows Key/Button and open "PowerShell_ISE" as an Administrator.
+  - _Right-click on PowerShell_ISE and select Run as administrator._
+<p align="center">
+<img src="https://i.imgur.com/js2KU37.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- At the top menu, click on "New Script"
+- Using a premade script, copy and paste the code into the box.
+
+<details close>
+  <summary> PowerShell Script </summary>
+  <p>
+ # ----- Edit these Variables for your own Use Case ----- #
+$PASSWORD_FOR_USERS   = "Password1"
+$NUMBER_OF_ACCOUNTS_TO_CREATE = 100
+# ------------------------------------------------------ #
+
+Function generate-random-name() {
+    $consonants = @('b','c','d','f','g','h','j','k','l','m','n','p','q','r','s','t','v','w','x','z')
+    $vowels = @('a','e','i','o','u','y')
+    $nameLength = Get-Random -Minimum 3 -Maximum 7
+    $count = 0
+    $name = ""
+
+    while ($count -lt $nameLength) {
+        if ($($count % 2) -eq 0) {
+            $name += $consonants[$(Get-Random -Minimum 0 -Maximum $($consonants.Count - 1))]
+        }
+        else {
+            $name += $vowels[$(Get-Random -Minimum 0 -Maximum $($vowels.Count - 1))]
+        }
+        $count++
+    }
+
+    return $name
+
+}
+
+$count = 1
+while ($count -lt $NUMBER_OF_ACCOUNTS_TO_CREATE) {
+    $fisrtName = generate-random-name
+    $lastName = generate-random-name
+    $username = $fisrtName + '.' + $lastName
+    $password = ConvertTo-SecureString $PASSWORD_FOR_USERS -AsPlainText -Force
+
+    Write-Host "Creating user: $($username)" -BackgroundColor Black -ForegroundColor Cyan
+    
+    New-AdUser -AccountPassword $password `
+               -GivenName $firstName `
+               -Surname $lastName `
+               -DisplayName $username `
+               -Name $username `
+               -EmployeeID $username `
+               -PasswordNeverExpires $true `
+               -Path "ou=_EMPLOYEES,$(([ADSI]`"").distinguishedName)" `
+               -Enabled $true
+    $count++
+}
+    </p>
+</details close>
+
+- When ready, at the top menu, click the "Run" button (green play button icon).
+  - _This script will create 100 accounts using the password "Password1" (variables set at beginning of code).
+These accounts will be placed at its set path: `_EMPLOYEES`, listed near the end of the code._
+<p align="center">
+<img src="https://i.imgur.com/2w34lrh.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+<img src="https://i.imgur.com/sIr018L.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+- Open "Active Directory Users and Computers" (from the Server Manager or Windows search)
+- Reveal mydomain.com, then reveal `_EMPLOYEES` folder.
+  - _You should see all of the randomly created user accounts in this folder._
+<p align="center">
+<img src="https://i.imgur.com/W8M9O4l.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+_Next, we're going to attempt to login one of those random users to Client-01 VM._
+- Copy any randomly created user (this example will use **did.cuta**).
+- Logoff of any account currently on Client-01 VM, and attempt to login with the random user.
+  - _Remember to start with the domain name before the username._
+<p align="center">
+<img src="https://i.imgur.com/GHvYS94.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+<img src="https://i.imgur.com/oXORyTs.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+
+_Whether it's failing at logging into accounts, resetting a password, or protecting against dangerous actors, there will always be a need for assistance to access one's account._
+- Double-click the user's account (this example uses **did.cuta**) to access the properties.
+  - _You can also Right-Click on the account for the Context Menu._
+  - With this you can unlock accounts, reset passwords, and more!
+<p align="center">
+<img src="https://i.imgur.com/VOUcyyi.jpg" height="70%" width="70%" alt="Azure Step 5-5"/>
+</p>
+<hr>
+
+<h1><p align=center>COMPLETE!</p></h1>
+
+<h2><p align=center>Next Demonstration:<br><a href="https://github.com/reynaldomata/azure-network-protocols">Network Security Groups (NSGs) and Inspecting Network Protocols</a></p></h2>
+
